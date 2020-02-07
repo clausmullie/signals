@@ -1,4 +1,5 @@
 from copy import deepcopy
+
 from django.contrib.gis.db import models
 
 
@@ -29,7 +30,16 @@ class BaseChangeTracker:
         Stores the current state of an instance. Is called in the ChangeLogger when initializing the logger.
         """
         for field in self.instance._meta.get_fields():
-            if isinstance(field, (models.ManyToManyRel, models.ManyToOneRel)):
+            if field.name in ['created_at', 'updated_at']:
+                continue
+
+            if isinstance(field, (models.OneToOneRel)):
+                field_name = field.get_accessor_name()
+                try:
+                    self.data[field_name] = getattr(self.instance, field_name).pk
+                except Exception:
+                    self.data[field_name] = None
+            elif isinstance(field, (models.ManyToManyRel, models.ManyToOneRel)):
                 field_name = field.get_accessor_name()
                 if getattr(self.instance, 'id'):
                     self.data[field_name] = list(getattr(self.instance, field_name).values_list('pk', flat=True))
